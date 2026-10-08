@@ -14,7 +14,11 @@ pub enum JsonSchemaDefinition {
         #[serde(skip_serializing_if = "Option::is_none")]
         required: Option<Vec<String>>,
         /// Indicates whether additional properties are allowed.
-        #[serde(skip_serializing_if = "Option::is_none")]
+        /// Enum variant renaming does not rename its fields.
+        #[serde(
+            rename = "additionalProperties",
+            skip_serializing_if = "Option::is_none"
+        )]
         additional_properties: Option<bool>,
     },
     /// Array schema validated via an item definition.
@@ -34,4 +38,32 @@ pub struct JsonSchemaConfig {
     pub strict: bool,
     /// The JSON Schema definition.
     pub schema: JsonSchemaDefinition,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JsonSchemaDefinition;
+    use serde_json::{json, Map};
+
+    #[test]
+    fn strict_object_schema_preserves_additional_properties() -> Result<(), serde_json::Error> {
+        let schema = JsonSchemaDefinition::Object {
+            properties: Map::new(),
+            required: Some(Vec::new()),
+            additional_properties: Some(false),
+        };
+        let wire = json!({
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+        });
+
+        assert_eq!(serde_json::to_value(&schema)?, wire);
+        assert_eq!(
+            serde_json::from_value::<JsonSchemaDefinition>(wire)?,
+            schema
+        );
+        Ok(())
+    }
 }
